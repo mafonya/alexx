@@ -35,7 +35,7 @@ This Mac has an Apple Development certificate for Michael Abramov and no Apple D
 
 **Description:**
 
-Save the words you use often and insert them with a tap. Snippy keeps reusable replies, email addresses, links, and longer messages organized in one place. Search your snippets, group them into categories, mark favorites, and choose an emoji for each one. Add the Snippy keyboard to use your snippets in other apps.
+Save the words you use often and insert them with a tap. Snippy keeps reusable replies, email addresses, links, and longer messages organized in one place. Search your snippets, group them into categories, and mark favorites. Add the Snippy keyboard to use your snippets in other apps.
 
 Your snippets stay on your device. Snippy has no account, analytics, advertising, or network requests. The keyboard offers built-in examples without Full Access. Allow Full Access to share your personal snippet library with the keyboard through storage that stays on the device.
 

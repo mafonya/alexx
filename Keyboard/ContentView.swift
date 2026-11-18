@@ -11,7 +11,6 @@ struct Snippet: Codable, Identifiable, Equatable {
     var title: String
     var content: String
     var collection: String
-    var icon: String?
     var isFavorite: Bool
     var createdAt: Date
 
@@ -20,7 +19,6 @@ struct Snippet: Codable, Identifiable, Equatable {
         title: String,
         content: String,
         collection: String,
-        icon: String? = nil,
         isFavorite: Bool = false,
         createdAt: Date = .now
     ) {
@@ -28,7 +26,6 @@ struct Snippet: Codable, Identifiable, Equatable {
         self.title = title
         self.content = content
         self.collection = collection
-        self.icon = icon
         self.isFavorite = isFavorite
         self.createdAt = createdAt
     }
@@ -36,9 +33,9 @@ struct Snippet: Codable, Identifiable, Equatable {
 
 private enum SnippetLibrary {
     static let starterSnippets = [
-        Snippet(title: "Quick reply", content: "Thanks! I’ll get back to you shortly.", collection: "Replies", icon: "💬", isFavorite: true),
-        Snippet(title: "Email", content: "hello@example.com", collection: "Personal", icon: "✉️", isFavorite: true),
-        Snippet(title: "Meeting", content: "Would you be available for a quick call this week?", collection: "Work", icon: "📅")
+        Snippet(title: "Quick reply", content: "Thanks! I’ll get back to you shortly.", collection: "Replies", isFavorite: true),
+        Snippet(title: "Email", content: "hello@example.com", collection: "Personal", isFavorite: true),
+        Snippet(title: "Meeting", content: "Would you be available for a quick call this week?", collection: "Work")
     ]
 
     static func load() -> [Snippet] {
@@ -104,8 +101,8 @@ final class SnippetStore {
         snippets = loadedSnippets
         SnippetLibrary.save(loadedSnippets)
 
-        let snippetCategories = Set(loadedSnippets.map(\.collection))
-        let storedCategories = Set(SnippetLibrary.loadCategories())
+        let snippetCategories = Set(loadedSnippets.map(\.collection).filter(Self.isNamedCategory))
+        let storedCategories = Set(SnippetLibrary.loadCategories().filter(Self.isNamedCategory))
         savedCategories = Array(snippetCategories.union(storedCategories)).sorted()
         SnippetLibrary.saveCategories(savedCategories)
     }
@@ -132,6 +129,25 @@ final class SnippetStore {
     func toggleFavorite(_ snippet: Snippet) {
         guard let index = snippets.firstIndex(where: { $0.id == snippet.id }) else { return }
         snippets[index].isFavorite.toggle()
+    }
+
+    @discardableResult
+    func importUncategorized(from text: String) -> Int {
+        let imported = text.split(whereSeparator: \.isNewline).compactMap { line -> Snippet? in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard let separator = trimmed.firstIndex(of: ":") else { return nil }
+            let title = trimmed[..<separator].trimmingCharacters(in: .whitespacesAndNewlines)
+            let content = trimmed[trimmed.index(after: separator)...].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty, !content.isEmpty else { return nil }
+            return Snippet(title: String(title), content: String(content), collection: "")
+        }
+        guard !imported.isEmpty else { return 0 }
+        snippets.insert(contentsOf: imported, at: 0)
+        return imported.count
+    }
+
+    private static func isNamedCategory(_ name: String) -> Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func addCategory(_ name: String) {
@@ -221,7 +237,6 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 VStack(spacing: 0) {
-                    SnippetSearchField(text: $searchText)
                     CollectionFilter(
                         collections: store.collections,
                         selection: $selectedCollection
@@ -229,6 +244,11 @@ struct ContentView: View {
                     snippetList
                 }
                 .navigationTitle("Snippets")
+                .searchable(
+                    text: $searchText,
+                    placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Search"
+                )
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Button("Manage Categories", systemImage: "folder") {
@@ -254,7 +274,7 @@ struct ContentView: View {
             }
             .tag(0)
 
-            SetupView()
+            SetupView(store: store)
                 .tabItem {
                     Label("Setup", systemImage: "keyboard")
                 }
@@ -360,35 +380,6 @@ private struct WelcomeView: View {
         .padding(.horizontal, 28)
         .padding(.bottom, 24)
         .background(Color(uiColor: .systemBackground))
-    }
-}
-
-private struct SnippetSearchField: View {
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-
-            TextField("Search snippets", text: $text)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-
-            if !text.isEmpty {
-                Button("Clear search", systemImage: "xmark.circle.fill") {
-                    text = ""
-                }
-                .labelStyle(.iconOnly)
-                .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 42)
-        .background(.quaternary, in: .rect(cornerRadius: 12))
-        .padding(.horizontal)
-        .padding(.top, 8)
     }
 }
 
@@ -543,17 +534,15 @@ private struct SnippetRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text(snippet.icon ?? "💬")
-                .font(.title2)
-                .accessibilityHidden(true)
-
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     Text(snippet.title)
                         .font(.headline)
-                    Text(snippet.collection)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if !snippet.collection.isEmpty {
+                        Text(snippet.collection)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Text(snippet.content)
                     .font(.subheadline)
@@ -595,9 +584,9 @@ private struct SnippetEditor: View {
     @State private var content: String
     @State private var collection: String
     @State private var newCollection: String
-    @State private var icon: String
-    @State private var isChoosingIcon = false
     @State private var isFavorite: Bool
+
+    private static let noCategory = "\u{0}"
 
     init(
         snippet: Snippet?,
@@ -609,9 +598,8 @@ private struct SnippetEditor: View {
         self.save = save
         _title = State(initialValue: snippet?.title ?? "")
         _content = State(initialValue: snippet?.content ?? "")
-        _collection = State(initialValue: snippet?.collection ?? existingCollections.first ?? "")
+        _collection = State(initialValue: Self.initialCollection(for: snippet, existingCollections: existingCollections))
         _newCollection = State(initialValue: "")
-        _icon = State(initialValue: snippet?.icon ?? "💬")
         _isFavorite = State(initialValue: snippet?.isFavorite ?? false)
     }
 
@@ -624,30 +612,9 @@ private struct SnippetEditor: View {
                         .lineLimit(4...10)
                 }
 
-                Section("Icon") {
-                    Button {
-                        isChoosingIcon = true
-                    } label: {
-                        HStack {
-                            Text("Icon")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Text(icon)
-                                .font(.title)
-                                .frame(width: 48, height: 48)
-                                .background(.quaternary, in: .rect(cornerRadius: 10))
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Icon, \(icon)")
-                    .accessibilityHint("Choose a different emoji")
-                }
-
                 Section("Category") {
                     Picker("Category", selection: $collection) {
+                        Text("No Category").tag(Self.noCategory)
                         ForEach(existingCollections, id: \.self) { category in
                             Text(category).tag(category)
                         }
@@ -677,7 +644,6 @@ private struct SnippetEditor: View {
                             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                             content: content,
                             collection: normalizedCategory,
-                            icon: icon,
                             isFavorite: isFavorite,
                             createdAt: originalSnippet?.createdAt ?? .now
                         )
@@ -687,14 +653,14 @@ private struct SnippetEditor: View {
                     .disabled(!canSave)
                 }
             }
-            .sheet(isPresented: $isChoosingIcon) {
-                EmojiIconChooser(icon: $icon)
-                    .presentationDetents([.medium])
-            }
         }
     }
 
     private var normalizedCategory: String {
+        if collection == Self.noCategory {
+            return ""
+        }
+
         let selected = collection.trimmingCharacters(in: .whitespacesAndNewlines)
         if !selected.isEmpty {
             return selected
@@ -707,69 +673,20 @@ private struct SnippetEditor: View {
     private var canSave: Bool {
         let hasTitle = !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let hasContent = !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let hasCategory = !collection.isEmpty ||
+        let hasCategory = collection == Self.noCategory || !collection.isEmpty ||
             !newCollection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return hasTitle && hasContent && hasCategory
     }
-}
 
-private struct EmojiIconChooser: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var icon: String
-
-    @State private var input = ""
-    @FocusState private var isInputFocused: Bool
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Text(icon)
-                    .font(.system(size: 72))
-                    .frame(width: 112, height: 112)
-                    .background(.quaternary, in: .rect(cornerRadius: 24))
-
-                TextField("Choose an emoji", text: $input)
-                    .font(.title)
-                    .multilineTextAlignment(.center)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isInputFocused)
-                    .onChange(of: input) { _, newValue in
-                        guard let candidate = newValue.last, candidate.isEmoji else { return }
-                        icon = String(candidate)
-                        input = String(candidate)
-                    }
-
-                Text("Switch to the standard emoji keyboard and tap any emoji.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding()
-            .navigationTitle("Choose Icon")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .onAppear {
-                input = icon
-                isInputFocused = true
-            }
-        }
-    }
-}
-
-private extension Character {
-    var isEmoji: Bool {
-        unicodeScalars.contains {
-            $0.properties.isEmojiPresentation || $0.properties.isEmoji
-        }
+    private static func initialCollection(for snippet: Snippet?, existingCollections: [String]) -> String {
+        guard let snippet else { return existingCollections.first ?? "" }
+        return snippet.collection.isEmpty ? noCategory : snippet.collection
     }
 }
 
 private struct SetupView: View {
     @Environment(\.openURL) private var openURL
+    let store: SnippetStore
     @State private var tryText = ""
 
     var body: some View {
@@ -799,6 +716,14 @@ private struct SetupView: View {
                     Button("Open Settings", systemImage: "gear") {
                         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                         openURL(url)
+                    }
+                }
+
+                Section {
+                    NavigationLink {
+                        ImportSnippetsView(store: store)
+                    } label: {
+                        Label("Import", systemImage: "square.and.arrow.down")
                     }
                 }
 
@@ -832,6 +757,69 @@ private struct SetupView: View {
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+}
+
+private struct ImportSnippetsView: View {
+    @Environment(\.dismiss) private var dismiss
+    let store: SnippetStore
+
+    @State private var text = ""
+    @State private var showsInvalidFormat = false
+    @FocusState private var isEditorFocused: Bool
+
+    private static let example = """
+    Quick reply: Thanks! I’ll get back to you shortly.
+    Email: hello@example.com
+    """
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $text)
+                    .font(.body)
+                    .focused($isEditorFocused)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .accessibilityLabel("Snippets to import")
+
+                if text.isEmpty {
+                    Text(Self.example)
+                        .font(.body)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 16)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(uiColor: .secondarySystemBackground), in: .rect(cornerRadius: 16))
+
+            Button("Import") {
+                let imported = store.importUncategorized(from: text)
+                if imported == 0 {
+                    showsInvalidFormat = true
+                } else {
+                    dismiss()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .padding()
+        .navigationTitle("Import")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Nothing to import", isPresented: $showsInvalidFormat) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Use one line per snippet, with the name and phrase separated by a colon.")
+        }
+        .onAppear {
+            isEditorFocused = true
+        }
     }
 }
 

@@ -9,13 +9,12 @@ private struct KeyboardSnippet: Codable, Identifiable {
     var title: String
     var content: String
     var collection: String
-    var icon: String?
     var isFavorite: Bool
     var createdAt: Date
 
     static let builtInExamples = [
-        KeyboardSnippet(id: UUID(), title: "Quick reply", content: "Thanks! I’ll get back to you shortly.", collection: "Examples", icon: "💬", isFavorite: true, createdAt: .distantPast),
-        KeyboardSnippet(id: UUID(), title: "Follow up", content: "Just following up on my previous message.", collection: "Examples", icon: "✉️", isFavorite: false, createdAt: .distantPast)
+        KeyboardSnippet(id: UUID(), title: "Quick reply", content: "Thanks! I’ll get back to you shortly.", collection: "Examples", isFavorite: true, createdAt: .distantPast),
+        KeyboardSnippet(id: UUID(), title: "Follow up", content: "Just following up on my previous message.", collection: "Examples", isFavorite: false, createdAt: .distantPast)
     ]
 }
 
@@ -87,7 +86,7 @@ private struct KeyboardRootView: View {
     @State private var selectedCollection: String?
 
     private var collections: [String] {
-        Array(Set(snippets.map(\.collection))).sorted()
+        Array(Set(snippets.map(\.collection).filter { !$0.isEmpty })).sorted()
     }
 
     private var visibleSnippets: [KeyboardSnippet] {
@@ -116,8 +115,24 @@ private struct KeyboardRootView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 8) {
-                TextField("Search snippets", text: $query)
-                    .textFieldStyle(.roundedBorder)
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    TextField("Search", text: $query)
+                        .textFieldStyle(.plain)
+                    if !query.isEmpty {
+                        Button("Clear search", systemImage: "xmark.circle.fill") {
+                            query = ""
+                        }
+                        .labelStyle(.iconOnly)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .frame(minHeight: 36)
+                .background(Color(uiColor: .systemBackground), in: .rect(cornerRadius: 10))
 
                 Button("Delete", systemImage: "delete.left", action: deleteBackward)
                     .labelStyle(.iconOnly)
@@ -163,15 +178,10 @@ private struct KeyboardRootView: View {
                                 insertText(snippet.content)
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    HStack(spacing: 5) {
-                                        Text(snippet.icon ?? (snippet.isFavorite ? "⭐️" : "💬"))
-                                            .font(.caption)
-                                        Text(snippet.title)
-                                            .font(.caption.weight(.semibold))
-                                            .foregroundStyle(.primary)
-                                            .lineLimit(1)
-                                        Spacer(minLength: 0)
-                                    }
+                                    Text(snippet.title)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
 
                                     Text(snippet.content)
                                         .font(.caption2)

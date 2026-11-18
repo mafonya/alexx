@@ -9,7 +9,6 @@ use the same library.
 
 - Create, edit, search, favorite, and delete snippets
 - Organize snippets into custom categories
-- Choose an emoji icon for each snippet
 - Insert snippets from a compact custom iOS keyboard
 - Local storage with no accounts, analytics, or network access
 
