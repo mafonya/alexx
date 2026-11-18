@@ -12,6 +12,11 @@ private struct KeyboardSnippet: Codable, Identifiable {
     var icon: String?
     var isFavorite: Bool
     var createdAt: Date
+
+    static let builtInExamples = [
+        KeyboardSnippet(id: UUID(), title: "Quick reply", content: "Thanks! I’ll get back to you shortly.", collection: "Examples", icon: "💬", isFavorite: true, createdAt: .distantPast),
+        KeyboardSnippet(id: UUID(), title: "Follow up", content: "Just following up on my previous message.", collection: "Examples", icon: "✉️", isFavorite: false, createdAt: .distantPast)
+    ]
 }
 
 final class KeyboardViewController: UIInputViewController {
@@ -22,6 +27,7 @@ final class KeyboardViewController: UIInputViewController {
 
         let rootView = KeyboardRootView(
             snippets: loadSnippets(),
+            hasFullAccess: hasFullAccess,
             insertText: { [weak self] text in
                 self?.textDocumentProxy.insertText(text)
             },
@@ -54,15 +60,17 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         host?.rootView.snippets = loadSnippets()
+        host?.rootView.hasFullAccess = hasFullAccess
     }
 
     private func loadSnippets() -> [KeyboardSnippet] {
+        guard hasFullAccess else { return KeyboardSnippet.builtInExamples }
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: appGroupIdentifier
         ),
         let data = try? Data(contentsOf: container.appendingPathComponent(libraryFilename)),
         let snippets = try? JSONDecoder().decode([KeyboardSnippet].self, from: data) else {
-            return []
+            return KeyboardSnippet.builtInExamples
         }
         return snippets
     }
@@ -70,6 +78,7 @@ final class KeyboardViewController: UIInputViewController {
 
 private struct KeyboardRootView: View {
     var snippets: [KeyboardSnippet]
+    var hasFullAccess: Bool
     let insertText: (String) -> Void
     let deleteBackward: () -> Void
     let nextKeyboard: () -> Void
@@ -100,6 +109,12 @@ private struct KeyboardRootView: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            if !hasFullAccess {
+                Text("Examples · Allow Full Access in Settings for your snippets")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             HStack(spacing: 8) {
                 TextField("Search snippets", text: $query)
                     .textFieldStyle(.roundedBorder)
@@ -131,7 +146,7 @@ private struct KeyboardRootView: View {
                 ContentUnavailableView(
                     snippets.isEmpty ? "No snippets yet" : "No matches",
                     systemImage: snippets.isEmpty ? "text.badge.plus" : "magnifyingglass",
-                    description: Text(snippets.isEmpty ? "Create snippets in the Snippet app." : "Try another search or collection.")
+                    description: Text(snippets.isEmpty ? "Create snippets in Snippy." : "Try another search or category.")
                 )
                 .frame(maxHeight: .infinity)
             } else {
@@ -192,7 +207,7 @@ private struct KeyboardRootView: View {
         .font(.caption.weight(.medium))
         .padding(.horizontal, 11)
         .frame(height: 30)
-        .background(isSelected ? Color.indigo : Color(uiColor: .tertiarySystemFill), in: .capsule)
+        .background(isSelected ? Color(red: 0.231, green: 0.510, blue: 0.965) : Color(uiColor: .tertiarySystemFill), in: .capsule)
         .foregroundStyle(isSelected ? .white : .primary)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

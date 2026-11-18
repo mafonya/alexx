@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Observation
 
 private let appGroupIdentifier = "group.com.michaelabramovpersonalteam.Keyboard"
@@ -42,8 +43,7 @@ private enum SnippetLibrary {
 
     static func load() -> [Snippet] {
         guard let data = try? Data(contentsOf: fileURL),
-              let snippets = try? JSONDecoder().decode([Snippet].self, from: data),
-              !snippets.isEmpty else {
+              let snippets = try? JSONDecoder().decode([Snippet].self, from: data) else {
             return starterSnippets
         }
         return snippets
@@ -102,6 +102,7 @@ final class SnippetStore {
     init() {
         let loadedSnippets = SnippetLibrary.load()
         snippets = loadedSnippets
+        SnippetLibrary.save(loadedSnippets)
 
         let snippetCategories = Set(loadedSnippets.map(\.collection))
         let storedCategories = Set(SnippetLibrary.loadCategories())
@@ -165,7 +166,9 @@ final class SnippetStore {
 }
 
 struct ContentView: View {
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
     @State private var store = SnippetStore()
+    @State private var selectedTab = 0
     @State private var searchText = ""
     @State private var selectedCollection: String?
     @State private var editorItem: EditorItem?
@@ -182,7 +185,40 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView {
+        Group {
+            if hasSeenWelcome {
+                mainTabs
+            } else {
+                WelcomeView(
+                    createSnippet: {
+                        selectedTab = 0
+                        hasSeenWelcome = true
+                        editorItem = EditorItem()
+                    },
+                    setUpKeyboard: {
+                        selectedTab = 1
+                        hasSeenWelcome = true
+                    }
+                )
+            }
+        }
+        .tint(.accentColor)
+        .sheet(item: $editorItem) { item in
+            SnippetEditor(
+                snippet: item.snippet,
+                existingCollections: store.collections
+            ) { snippet in
+                if item.snippet == nil {
+                    store.add(snippet)
+                } else {
+                    store.update(snippet)
+                }
+            }
+        }
+    }
+
+    private var mainTabs: some View {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 VStack(spacing: 0) {
                     SnippetSearchField(text: $searchText)
@@ -204,18 +240,6 @@ struct ContentView: View {
                         }
                     }
                 }
-                .sheet(item: $editorItem) { item in
-                    SnippetEditor(
-                        snippet: item.snippet,
-                        existingCollections: store.collections
-                    ) { snippet in
-                        if item.snippet == nil {
-                            store.add(snippet)
-                        } else {
-                            store.update(snippet)
-                        }
-                    }
-                }
                 .sheet(isPresented: $isManagingCategories) {
                     CategoryManager(store: store)
                 }
@@ -226,21 +250,30 @@ struct ContentView: View {
                 }
             }
             .tabItem {
-                Label("Snippets", systemImage: "text.badge.checkmark")
+                Label("Snippets", systemImage: "text.alignleft")
             }
+            .tag(0)
 
             SetupView()
                 .tabItem {
                     Label("Setup", systemImage: "keyboard")
                 }
+                .tag(1)
         }
-        .tint(.indigo)
     }
 
     private var snippetList: some View {
         List {
             if filteredSnippets.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                if store.snippets.isEmpty {
+                    ContentUnavailableView(
+                        "No snippets yet",
+                        systemImage: "text.badge.plus",
+                        description: Text("Tap the plus button to save text you use often.")
+                    )
+                } else {
+                    ContentUnavailableView.search(text: searchText)
+                }
             } else {
                 ForEach(filteredSnippets) { snippet in
                     SnippetRow(snippet: snippet) {
@@ -259,6 +292,74 @@ struct ContentView: View {
         }
         .listStyle(.plain)
         .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+private struct WelcomeView: View {
+    let createSnippet: () -> Void
+    let setUpKeyboard: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 36)
+
+            Image("SnippyMark")
+                .resizable()
+                .frame(width: 72, height: 72)
+                .accessibilityHidden(true)
+
+            Text("Snippy")
+                .font(.largeTitle.bold())
+                .foregroundStyle(.primary)
+                .padding(.top, 24)
+
+            Text("Your words, one tap away.")
+                .font(.title2.weight(.semibold))
+                .padding(.top, 8)
+
+            Text("Save the text you use often. Find it in your keyboard whenever you need it.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .padding(.top, 12)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Quick reply", systemImage: "text.alignleft")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("Thanks! I’ll get back to you shortly.")
+                    .font(.body)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+            .background(Color(uiColor: .secondarySystemBackground), in: .rect(cornerRadius: 18))
+            .padding(.top, 36)
+
+            Spacer(minLength: 36)
+
+            Button(action: createSnippet) {
+                Text("Create a snippet")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+
+            Button(action: setUpKeyboard) {
+                Text("Set up keyboard")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .padding(.top, 10)
+
+            Text("Your snippets stay on this device.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 18)
+        }
+        .padding(.horizontal, 28)
+        .padding(.bottom, 24)
+        .background(Color(uiColor: .systemBackground))
     }
 }
 
@@ -431,7 +532,7 @@ private struct FilterChip: View {
         Button(title, action: action)
             .buttonStyle(.bordered)
             .buttonBorderShape(.capsule)
-            .tint(isSelected ? .indigo : .secondary)
+            .tint(isSelected ? .accentColor : .secondary)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
@@ -669,13 +770,14 @@ private extension Character {
 
 private struct SetupView: View {
     @Environment(\.openURL) private var openURL
+    @State private var tryText = ""
 
     var body: some View {
         NavigationStack {
             List {
                 Section("Our Promise") {
-                    Label("Free forever", systemImage: "gift")
-                    Label("We don’t and never will collect any data.", systemImage: "hand.raised.fill")
+                    Label("Free to use", systemImage: "gift")
+                    Label("No data collection", systemImage: "hand.raised")
                 }
 
                 Section("Privacy") {
@@ -685,27 +787,35 @@ private struct SetupView: View {
                 }
 
                 Section {
-                    SetupStep(number: 1, title: "Open Keyboard Settings", detail: "Tap the button below to open your keyboard settings.")
-                    SetupStep(number: 2, title: "Add SnippetKeyboard", detail: "Choose Keyboards, Add New Keyboard, then SnippetKeyboard.")
-                    SetupStep(number: 3, title: "Allow Full Access", detail: "This lets the app share your local snippet library with the keyboard. The app does not transmit what you type.")
-                    SetupStep(number: 4, title: "Start typing", detail: "Tap the Globe key in any standard text field and choose SnippetKeyboard.")
+                    SetupStep(number: 1, title: "Open Settings", detail: "Tap the button below. Then go to General, Keyboard, Keyboards.")
+                    SetupStep(number: 2, title: "Add Snippy", detail: "Tap Add New Keyboard, then Snippy.")
+                    SetupStep(number: 3, title: "Share your snippets", detail: "Tap Snippy in the keyboard list and turn on Allow Full Access. Built-in examples work without it. Snippy does not transmit what you type.")
+                    SetupStep(number: 4, title: "Start typing", detail: "In a text field, tap the globe key and choose Snippy.")
                 } header: {
                     Text("Four quick steps")
                 }
 
                 Section {
-                    Button("Open Keyboard Settings", systemImage: "gear") {
-                        guard let url = URL(string: "app-settings:") else { return }
+                    Button("Open Settings", systemImage: "gear") {
+                        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                         openURL(url)
                     }
                 }
 
                 Section("Try it") {
-                    TextField("Switch keyboards and insert a snippet", text: .constant(""))
+                    TextField("Switch keyboards and insert a snippet", text: $tryText)
                 }
 
                 Section("About") {
                     LabeledContent("Version", value: appVersion)
+                    NavigationLink("Privacy Policy") {
+                        PrivacyPolicyView()
+                    }
+                    if let supportURL = URL(string: "https://github.com/mafonya/snippy/issues") {
+                        Link(destination: supportURL) {
+                            LabeledContent("Support", value: "GitHub Issues")
+                        }
+                    }
                     if let repositoryURL = URL(string: "https://github.com/mafonya/snippy") {
                         Link(destination: repositoryURL) {
                             LabeledContent("GitHub repository", value: "mafonya/snippy")
@@ -722,6 +832,24 @@ private struct SetupView: View {
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+}
+
+private struct PrivacyPolicyView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Snippy stores the snippets and categories you create on your device. The app and keyboard share them through an Apple App Group container.")
+                Text("Snippy does not create accounts, use analytics or advertising, send snippets or typing activity to a server, or share your data with third parties.")
+                Text("Full Access lets the keyboard read your personal snippets from the shared container. Without it, the keyboard offers built-in examples. The keyboard does not transmit what you type.")
+                Text("You can delete snippets and categories in the app. Removing the app removes its locally stored data, subject to any device backups you control.")
+                Text("For privacy questions, open an issue at https://github.com/mafonya/snippy/issues.")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+        }
+        .navigationTitle("Privacy Policy")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -759,7 +887,7 @@ private struct SetupStep: View {
             Text(number, format: .number)
                 .font(.headline)
                 .frame(width: 32, height: 32)
-                .background(.indigo, in: .circle)
+                .background(Color.accentColor, in: .circle)
                 .foregroundStyle(.white)
                 .accessibilityHidden(true)
 

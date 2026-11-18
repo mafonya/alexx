@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="208" viewBox="0 0 840 208">
+  <rect x="8" y="8" width="192" height="192" rx="42" fill="#17212F"/>
+  <rect x="42" y="46" width="124" height="116" rx="23" fill="#F8FAFC"/>
+  <rect x="60" y="69" width="60" height="10" rx="5" fill="#8A9AAD"/>
+  <rect x="60" y="92" width="48" height="10" rx="5" fill="#B7C3D1"/>
+  <rect x="60" y="115" width="55" height="10" rx="5" fill="#B7C3D1"/>
+  <rect x="132" y="67" width="9" height="60" rx="4.5" fill="#3B82F6"/>
+  <rect x="122" y="130" width="29" height="7" rx="3.5" fill="#3B82F6"/>
+  <text x="236" y="146" fill="#17212F" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-size="120" font-weight="700" letter-spacing="-5">Snippy</text>
+</svg>

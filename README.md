@@ -1,6 +1,6 @@
-# SnippetKeyboard
+# Snippy
 
-SnippetKeyboard is an open-source iPhone app and custom keyboard for creating,
+Snippy is an open-source iPhone app and custom keyboard for creating,
 organizing, and inserting reusable text snippets. Snippets are stored locally
 in a shared App Group container so the companion app and keyboard extension can
 use the same library.
@@ -26,7 +26,7 @@ use the same library.
 4. Replace the current bundle identifiers with identifiers owned by your team.
 5. Create an App Group owned by your team and use the same group in both target entitlement files and the shared-container identifier in the source.
 6. Build and run `MyApp` on an iPhone.
-7. Open **Settings > General > Keyboard > Keyboards > Add New Keyboard**, add SnippetKeyboard, and allow full access so the extension can read the shared local library.
+7. Open **Settings > General > Keyboard > Keyboards > Add New Keyboard** and add Snippy. The keyboard works with built-in examples immediately. Allow Full Access if you want it to read your personal snippets from the shared local library.
 
 ## Project structure
 
@@ -36,8 +36,9 @@ use the same library.
 
 ## Privacy
 
-SnippetKeyboard stores snippets locally. The project does not include accounts,
+Snippy stores snippets locally. The project does not include accounts,
 analytics, advertising, or network requests.
+See [PRIVACY.md](PRIVACY.md) for the draft privacy policy.
 
 ## Contributing
 
