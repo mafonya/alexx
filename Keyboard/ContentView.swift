@@ -706,7 +706,11 @@ private struct SetupView: View {
 
                 Section("About") {
                     LabeledContent("Version", value: appVersion)
-                    LabeledContent("GitHub repository", value: "Coming soon")
+                    if let repositoryURL = URL(string: "https://github.com/mafonya/snippy") {
+                        Link(destination: repositoryURL) {
+                            LabeledContent("GitHub repository", value: "mafonya/snippy")
+                        }
+                    }
                     NavigationLink("License") {
                         MITLicenseView()
                     }
