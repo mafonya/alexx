@@ -326,6 +326,7 @@ private struct WelcomeView: View {
             Image("SnippyMark")
                 .resizable()
                 .frame(width: 72, height: 72)
+                .clipShape(.rect(cornerRadius: 16))
                 .accessibilityHidden(true)
 
             Text("Snippy")
