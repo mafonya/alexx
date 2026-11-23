@@ -366,7 +366,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A39F493A5W;
+				DEVELOPMENT_TEAM = C657PSA3Z2;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -388,7 +388,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelabramovpersonalteam.Keyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snippykeyboard.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -411,7 +411,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A39F493A5W;
+				DEVELOPMENT_TEAM = C657PSA3Z2;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -433,7 +433,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelabramovpersonalteam.Keyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snippykeyboard.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -454,7 +454,7 @@
 				CODE_SIGN_ENTITLEMENTS = SnippetKeyboard/SnippetKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A39F493A5W;
+				DEVELOPMENT_TEAM = C657PSA3Z2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnippetKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Snippy;
@@ -466,7 +466,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelabramovpersonalteam.Keyboard.SnippetKeyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snippykeyboard.app.SnippetKeyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -485,7 +485,7 @@
 				CODE_SIGN_ENTITLEMENTS = SnippetKeyboard/SnippetKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A39F493A5W;
+				DEVELOPMENT_TEAM = C657PSA3Z2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnippetKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Snippy;
@@ -497,7 +497,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelabramovpersonalteam.Keyboard.SnippetKeyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snippykeyboard.app.SnippetKeyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;

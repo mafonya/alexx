@@ -1,12 +1,15 @@
 import SwiftUI
 import UIKit
 import Observation
+import CoreTransferable
+import UniformTypeIdentifiers
+import Security
 
-private let appGroupIdentifier = "group.com.michaelabramovpersonalteam.Keyboard"
+private let appGroupIdentifier = "group.com.snippykeyboard.app"
 private let libraryFilename = "snippets.json"
 private let categoriesFilename = "categories.json"
 
-struct Snippet: Codable, Identifiable, Equatable {
+struct Snippet: Codable, Identifiable, Equatable, Sendable {
     let id: UUID
     var title: String
     var content: String
@@ -31,12 +34,102 @@ struct Snippet: Codable, Identifiable, Equatable {
     }
 }
 
+private struct SnippetBackup: Codable, Sendable {
+    let version: Int
+    let snippets: [Snippet]
+    let categories: [String]
+    let backedUpAt: Date?
+
+    init(
+        version: Int = 1,
+        snippets: [Snippet],
+        categories: [String],
+        backedUpAt: Date? = nil
+    ) {
+        self.version = version
+        self.snippets = snippets
+        self.categories = categories
+        self.backedUpAt = backedUpAt
+    }
+}
+
+private struct SnippetArchive: Transferable, Sendable {
+    let data: Data
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .json) { archive in
+            let fileURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("snippy-\(UUID().uuidString)")
+                .appendingPathExtension("json")
+            try archive.data.write(to: fileURL, options: .atomic)
+            return SentTransferredFile(fileURL)
+        }
+        .suggestedFileName { _ in "snippy-backup.json" }
+    }
+}
+
+private enum KeychainBackup {
+    private static let service = "com.snippykeyboard.app.backup"
+    private static let account = "snippet-library"
+
+    static func save(_ data: Data) throws {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        let attributes: [String: Any] = [kSecValueData as String: data]
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+
+        if updateStatus == errSecItemNotFound {
+            var newItem = query
+            newItem[kSecValueData as String] = data
+            newItem[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            let addStatus = SecItemAdd(newItem as CFDictionary, nil)
+            guard addStatus == errSecSuccess else { throw BackupError(status: addStatus) }
+        } else if updateStatus != errSecSuccess {
+            throw BackupError(status: updateStatus)
+        }
+    }
+
+    static func load() -> SnippetBackup? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else {
+            return nil
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(SnippetBackup.self, from: data)
+    }
+
+    private struct BackupError: LocalizedError {
+        let status: OSStatus
+
+        var errorDescription: String? {
+            String(localized: "The backup could not be saved (Keychain error \(status)).")
+        }
+    }
+}
+
 private enum SnippetLibrary {
     static let starterSnippets = [
         Snippet(title: "Quick reply", content: "Thanks! I’ll get back to you shortly.", collection: "Replies", isFavorite: true),
         Snippet(title: "Email", content: "hello@example.com", collection: "Personal", isFavorite: true),
         Snippet(title: "Meeting", content: "Would you be available for a quick call this week?", collection: "Work")
     ]
+
+    static var hasStoredLibrary: Bool {
+        FileManager.default.fileExists(atPath: fileURL.path)
+    }
 
     static func load() -> [Snippet] {
         guard let data = try? Data(contentsOf: fileURL),
@@ -96,19 +189,48 @@ final class SnippetStore {
         didSet { SnippetLibrary.saveCategories(savedCategories) }
     }
 
+    private(set) var lastBackupDate: Date?
+
     init() {
-        let loadedSnippets = SnippetLibrary.load()
+        let keychainBackup = KeychainBackup.load()
+        let loadedSnippets = SnippetLibrary.hasStoredLibrary
+            ? SnippetLibrary.load()
+            : keychainBackup?.snippets ?? SnippetLibrary.load()
         snippets = loadedSnippets
         SnippetLibrary.save(loadedSnippets)
 
         let snippetCategories = Set(loadedSnippets.map(\.collection).filter(Self.isNamedCategory))
         let storedCategories = Set(SnippetLibrary.loadCategories().filter(Self.isNamedCategory))
-        savedCategories = Array(snippetCategories.union(storedCategories)).sorted()
+        let backedUpCategories = Set((keychainBackup?.categories ?? []).filter(Self.isNamedCategory))
+        savedCategories = Array(snippetCategories.union(storedCategories).union(backedUpCategories)).sorted()
+        lastBackupDate = keychainBackup?.backedUpAt
         SnippetLibrary.saveCategories(savedCategories)
     }
 
     var collections: [String] {
         savedCategories
+    }
+
+    fileprivate func makeArchive() -> SnippetArchive {
+        SnippetArchive(data: (try? makeBackupData(backedUpAt: nil)) ?? Data("{}".utf8))
+    }
+
+    func saveBackup() throws {
+        let backupDate = Date.now
+        try KeychainBackup.save(makeBackupData(backedUpAt: backupDate))
+        lastBackupDate = backupDate
+    }
+
+    private func makeBackupData(backedUpAt: Date?) throws -> Data {
+        let backup = SnippetBackup(
+            snippets: snippets,
+            categories: savedCategories,
+            backedUpAt: backedUpAt
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(backup)
     }
 
     func add(_ snippet: Snippet) {
@@ -689,6 +811,8 @@ private struct SetupView: View {
     @Environment(\.openURL) private var openURL
     let store: SnippetStore
     @State private var tryText = ""
+    @State private var backupMessage: String?
+    @FocusState private var isTryFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -726,10 +850,46 @@ private struct SetupView: View {
                     } label: {
                         Label("Import", systemImage: "square.and.arrow.down")
                     }
+
+                    ShareLink(
+                        item: store.makeArchive(),
+                        preview: SharePreview(
+                            "Snippy backup",
+                            image: Image(systemName: "doc.text")
+                        )
+                    ) {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button("Backup", systemImage: "key") {
+                        do {
+                            try store.saveBackup()
+                            backupMessage = "Backup saved securely on this device."
+                        } catch {
+                            backupMessage = "Backup failed: \(error.localizedDescription)"
+                        }
+                    }
+
+                    LabeledContent("Last backup") {
+                        if let lastBackupDate = store.lastBackupDate {
+                            Text(
+                                lastBackupDate,
+                                format: .dateTime
+                                    .month(.abbreviated)
+                                    .day()
+                                    .year()
+                                    .hour()
+                                    .minute()
+                            )
+                        } else {
+                            Text("Never")
+                        }
+                    }
                 }
 
                 Section("Try it") {
                     TextField("Switch keyboards and insert a snippet", text: $tryText)
+                        .focused($isTryFieldFocused)
                 }
 
                 Section("About") {
@@ -752,7 +912,24 @@ private struct SetupView: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("Keyboard Setup")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isTryFieldFocused = false
+                    }
+                }
+            }
+            .alert("Backup", isPresented: Binding(
+                get: { backupMessage != nil },
+                set: { if !$0 { backupMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(backupMessage ?? "")
+            }
         }
     }
 

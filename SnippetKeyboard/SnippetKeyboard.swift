@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-private let appGroupIdentifier = "group.com.michaelabramovpersonalteam.Keyboard"
+private let appGroupIdentifier = "group.com.snippykeyboard.app"
 private let libraryFilename = "snippets.json"
 
 private struct KeyboardSnippet: Codable, Identifiable {
@@ -203,7 +203,7 @@ private struct KeyboardRootView: View {
             }
         }
         .padding(.horizontal, 8)
-        .padding(.top, 2)
+        .padding(.top, 20)
         .padding(.bottom, 8)
         .background(Color(uiColor: .secondarySystemBackground))
         .ignoresSafeArea(edges: .top)
