@@ -366,7 +366,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = C657PSA3Z2;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -413,7 +413,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = C657PSA3Z2;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
@@ -457,7 +457,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SnippetKeyboard/SnippetKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = C657PSA3Z2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnippetKeyboard/Info.plist;
@@ -488,7 +488,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SnippetKeyboard/SnippetKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = C657PSA3Z2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SnippetKeyboard/Info.plist;
