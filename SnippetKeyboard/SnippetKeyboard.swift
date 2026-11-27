@@ -161,7 +161,7 @@ private struct KeyboardRootView: View {
                 ContentUnavailableView(
                     snippets.isEmpty ? "No snippets yet" : "No matches",
                     systemImage: snippets.isEmpty ? "text.badge.plus" : "magnifyingglass",
-                    description: Text(snippets.isEmpty ? "Create snippets in Snippy." : "Try another search or category.")
+                    description: Text(snippets.isEmpty ? "Create snippets in Alexx: Snippet Keyboard." : "Try another search or category.")
                 )
                 .frame(maxHeight: .infinity)
             } else {

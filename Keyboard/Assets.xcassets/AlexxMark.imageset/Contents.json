@@ -1,14 +1,14 @@
 {
   "images" : [
     {
-      "filename" : "SnippyMark.png",
+      "filename" : "AlexxMark.png",
       "idiom" : "universal"
     },
     {
       "appearances" : [
         { "appearance" : "luminosity", "value" : "dark" }
       ],
-      "filename" : "SnippyMark-Dark.png",
+      "filename" : "AlexxMark-Dark.png",
       "idiom" : "universal"
     }
   ],

@@ -59,12 +59,12 @@ private struct SnippetArchive: Transferable, Sendable {
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .json) { archive in
             let fileURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("snippy-\(UUID().uuidString)")
+                .appendingPathComponent("alexx-\(UUID().uuidString)")
                 .appendingPathExtension("json")
             try archive.data.write(to: fileURL, options: .atomic)
             return SentTransferredFile(fileURL)
         }
-        .suggestedFileName { _ in "snippy-backup.json" }
+        .suggestedFileName { _ in "alexx-backup.json" }
     }
 }
 
@@ -445,13 +445,13 @@ private struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer(minLength: 36)
 
-            Image("SnippyMark")
+            Image("AlexxMark")
                 .resizable()
                 .frame(width: 72, height: 72)
                 .clipShape(.rect(cornerRadius: 16))
                 .accessibilityHidden(true)
 
-            Text("Snippy")
+            Text("Alexx: Snippet Keyboard")
                 .font(.largeTitle.bold())
                 .foregroundStyle(.primary)
                 .padding(.top, 24)
@@ -830,9 +830,9 @@ private struct SetupView: View {
 
                 Section {
                     SetupStep(number: 1, title: "Open Settings", detail: "Tap the button below. Then go to General, Keyboard, Keyboards.")
-                    SetupStep(number: 2, title: "Add Snippy", detail: "Tap Add New Keyboard, then Snippy.")
-                    SetupStep(number: 3, title: "Share your snippets", detail: "Tap Snippy in the keyboard list and turn on Allow Full Access. Built-in examples work without it. Snippy does not transmit what you type.")
-                    SetupStep(number: 4, title: "Start typing", detail: "In a text field, tap the globe key and choose Snippy.")
+                    SetupStep(number: 2, title: "Add Alexx: Snippet Keyboard", detail: "Tap Add New Keyboard, then Alexx: Snippet Keyboard.")
+                    SetupStep(number: 3, title: "Share your snippets", detail: "Tap Alexx: Snippet Keyboard in the keyboard list and turn on Allow Full Access. Built-in examples work without it. Alexx: Snippet Keyboard does not transmit what you type.")
+                    SetupStep(number: 4, title: "Start typing", detail: "In a text field, tap the globe key and choose Alexx: Snippet Keyboard.")
                 } header: {
                     Text("Four quick steps")
                 }
@@ -854,7 +854,7 @@ private struct SetupView: View {
                     ShareLink(
                         item: store.makeArchive(),
                         preview: SharePreview(
-                            "Snippy backup",
+                            "Alexx: Snippet Keyboard backup",
                             image: Image(systemName: "doc.text")
                         )
                     ) {
@@ -897,14 +897,14 @@ private struct SetupView: View {
                     NavigationLink("Privacy Policy") {
                         PrivacyPolicyView()
                     }
-                    if let supportURL = URL(string: "https://github.com/mafonya/snippy/issues") {
+                    if let supportURL = URL(string: "https://github.com/mafonya/alexx/issues") {
                         Link(destination: supportURL) {
                             LabeledContent("Support", value: "GitHub Issues")
                         }
                     }
-                    if let repositoryURL = URL(string: "https://github.com/mafonya/snippy") {
+                    if let repositoryURL = URL(string: "https://github.com/mafonya/alexx") {
                         Link(destination: repositoryURL) {
-                            LabeledContent("GitHub repository", value: "mafonya/snippy")
+                            LabeledContent("GitHub repository", value: "mafonya/alexx")
                         }
                     }
                     NavigationLink("License") {
@@ -1005,11 +1005,11 @@ private struct PrivacyPolicyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Snippy stores the snippets and categories you create on your device. The app and keyboard share them through an Apple App Group container.")
-                Text("Snippy does not create accounts, use analytics or advertising, send snippets or typing activity to a server, or share your data with third parties.")
+                Text("Alexx: Snippet Keyboard stores the snippets and categories you create on your device. The app and keyboard share them through an Apple App Group container.")
+                Text("Alexx: Snippet Keyboard does not create accounts, use analytics or advertising, send snippets or typing activity to a server, or share your data with third parties.")
                 Text("Full Access lets the keyboard read your personal snippets from the shared container. Without it, the keyboard offers built-in examples. The keyboard does not transmit what you type.")
                 Text("You can delete snippets and categories in the app. Removing the app removes its locally stored data, subject to any device backups you control.")
-                Text("For privacy questions, open an issue at https://github.com/mafonya/snippy/issues.")
+                Text("For privacy questions, open an issue at https://github.com/mafonya/alexx/issues.")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
