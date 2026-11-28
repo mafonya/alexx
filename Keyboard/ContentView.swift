@@ -144,10 +144,10 @@ private enum SnippetLibrary {
         try? data.write(to: fileURL, options: .atomic)
     }
 
-    static func loadCategories() -> [String] {
+    static func loadCategories() -> [String]? {
         guard let data = try? Data(contentsOf: categoriesURL),
               let categories = try? JSONDecoder().decode([String].self, from: data) else {
-            return []
+            return nil
         }
         return categories
     }
@@ -200,9 +200,8 @@ final class SnippetStore {
         SnippetLibrary.save(loadedSnippets)
 
         let snippetCategories = Set(loadedSnippets.map(\.collection).filter(Self.isNamedCategory))
-        let storedCategories = Set(SnippetLibrary.loadCategories().filter(Self.isNamedCategory))
-        let backedUpCategories = Set((keychainBackup?.categories ?? []).filter(Self.isNamedCategory))
-        savedCategories = Array(snippetCategories.union(storedCategories).union(backedUpCategories)).sorted()
+        let restoredCategories = SnippetLibrary.loadCategories() ?? keychainBackup?.categories ?? []
+        savedCategories = snippetCategories.union(restoredCategories.filter(Self.isNamedCategory)).sorted()
         lastBackupDate = keychainBackup?.backedUpAt
         SnippetLibrary.saveCategories(savedCategories)
     }
@@ -219,6 +218,23 @@ final class SnippetStore {
         let backupDate = Date.now
         try KeychainBackup.save(makeBackupData(backedUpAt: backupDate))
         lastBackupDate = backupDate
+    }
+
+    func resetToSamples() {
+        let samples = SnippetLibrary.starterSnippets
+        snippets = samples
+        savedCategories = Set(samples.map(\.collection)).sorted()
+    }
+
+    func restoreBackup() -> Bool {
+        guard let backup = KeychainBackup.load(), backup.version == 1 else {
+            return false
+        }
+
+        snippets = backup.snippets
+        let categories = Set(backup.categories).union(backup.snippets.map(\.collection))
+        savedCategories = categories.filter(Self.isNamedCategory).sorted()
+        return true
     }
 
     private func makeBackupData(backedUpAt: Date?) throws -> Data {
@@ -311,6 +327,7 @@ struct ContentView: View {
     @State private var selectedCollection: String?
     @State private var editorItem: EditorItem?
     @State private var isManagingCategories = false
+    @State private var snippetPendingDeletion: Snippet?
 
     private var filteredSnippets: [Snippet] {
         store.snippets.filter { snippet in
@@ -359,18 +376,15 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 VStack(spacing: 0) {
-                    CollectionFilter(
+                    SnippetControls(
                         collections: store.collections,
-                        selection: $selectedCollection
+                        selection: $selectedCollection,
+                        searchText: $searchText
                     )
                     snippetList
                 }
-                .navigationTitle("Snippets")
-                .searchable(
-                    text: $searchText,
-                    placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Search"
-                )
+                .illustratedBackground()
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Button("Manage Categories", systemImage: "folder") {
@@ -384,6 +398,25 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: $isManagingCategories) {
                     CategoryManager(store: store)
+                }
+                .confirmationDialog(
+                    "Delete \(snippetPendingDeletion?.title ?? "this snippet")?",
+                    isPresented: Binding(
+                        get: { snippetPendingDeletion != nil },
+                        set: { if !$0 { snippetPendingDeletion = nil } }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) {
+                        guard let snippetPendingDeletion else { return }
+                        store.snippets.removeAll { $0.id == snippetPendingDeletion.id }
+                        self.snippetPendingDeletion = nil
+                    }
+                    Button("Cancel", role: .cancel) {
+                        snippetPendingDeletion = nil
+                    }
+                } message: {
+                    Text("This removes the snippet from this device.")
                 }
                 .onChange(of: store.collections) { _, collections in
                     if let selectedCollection, !collections.contains(selectedCollection) {
@@ -425,14 +458,16 @@ struct ContentView: View {
                     .onTapGesture {
                         editorItem = EditorItem(snippet: snippet)
                     }
-                }
-                .onDelete { offsets in
-                    let ids = offsets.map { filteredSnippets[$0].id }
-                    store.snippets.removeAll { ids.contains($0.id) }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            snippetPendingDeletion = snippet
+                        }
+                    }
                 }
             }
         }
         .listStyle(.plain)
+        .listRowSeparator(.hidden)
         .scrollDismissesKeyboard(.interactively)
     }
 }
@@ -451,7 +486,7 @@ private struct WelcomeView: View {
                 .clipShape(.rect(cornerRadius: 16))
                 .accessibilityHidden(true)
 
-            Text("Alexx: Snippet Keyboard")
+            Text("Alexx")
                 .font(.largeTitle.bold())
                 .foregroundStyle(.primary)
                 .padding(.top, 24)
@@ -502,7 +537,8 @@ private struct WelcomeView: View {
         }
         .padding(.horizontal, 28)
         .padding(.bottom, 24)
-        .background(Color(uiColor: .systemBackground))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .illustratedBackground()
     }
 }
 
@@ -559,6 +595,7 @@ private struct CategoryManager: View {
                     }
                 }
             }
+            .illustratedBackground()
             .navigationTitle("Manage Categories")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -613,27 +650,51 @@ private struct CategoryManager: View {
     }
 }
 
-private struct CollectionFilter: View {
+private struct SnippetControls: View {
     let collections: [String]
     @Binding var selection: String?
+    @Binding var searchText: String
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack {
-                FilterChip(title: "All", isSelected: selection == nil) {
-                    selection = nil
-                }
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
 
-                ForEach(collections, id: \.self) { collection in
-                    FilterChip(title: collection, isSelected: selection == collection) {
-                        selection = collection
+                TextField("Search snippets", text: $searchText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                if !searchText.isEmpty {
+                    Button("Clear search", systemImage: "xmark.circle.fill") {
+                        searchText = ""
                     }
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: .rect(cornerRadius: 16))
+
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    FilterChip(title: "All", isSelected: selection == nil) {
+                        selection = nil
+                    }
+
+                    ForEach(collections, id: \.self) { collection in
+                        FilterChip(title: collection, isSelected: selection == collection) {
+                            selection = collection
+                        }
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            .scrollIndicators(.hidden)
         }
-        .scrollIndicators(.hidden)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
@@ -644,9 +705,20 @@ private struct FilterChip: View {
 
     var body: some View {
         Button(title, action: action)
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .tint(isSelected ? .accentColor : .secondary)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(isSelected ? .white : .primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background {
+                if isSelected {
+                    Capsule().fill(Color.accentColor)
+                } else {
+                    Capsule().fill(.ultraThinMaterial)
+                }
+            }
+            .overlay {
+                Capsule().stroke(.white.opacity(isSelected ? 0.18 : 0.35), lineWidth: 1)
+            }
             .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
@@ -684,7 +756,14 @@ private struct SnippetRow: View {
             .foregroundStyle(snippet.isFavorite ? .yellow : .secondary)
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .background(Color(uiColor: .systemBackground).opacity(0.8), in: .rect(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.24), lineWidth: 1)
+        }
+        .listRowInsets(.init(top: 5, leading: 16, bottom: 5, trailing: 16))
+        .listRowBackground(Color.clear)
     }
 }
 
@@ -753,6 +832,7 @@ private struct SnippetEditor: View {
                     Toggle("Favorite", isOn: $isFavorite)
                 }
             }
+            .illustratedBackground()
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(originalSnippet == nil ? "New Snippet" : "Edit Snippet")
             .navigationBarTitleDisplayMode(.inline)
@@ -809,9 +889,13 @@ private struct SnippetEditor: View {
 
 private struct SetupView: View {
     @Environment(\.openURL) private var openURL
+    @AppStorage(IllustratedBackground.clearPreferenceKey) private var clearsBackground = false
     let store: SnippetStore
     @State private var tryText = ""
     @State private var backupMessage: String?
+    @State private var confirmsRestore = false
+    @State private var showsResetSheet = false
+    @State private var confirmsReset = false
     @FocusState private var isTryFieldFocused: Bool
 
     var body: some View {
@@ -830,9 +914,9 @@ private struct SetupView: View {
 
                 Section {
                     SetupStep(number: 1, title: "Open Settings", detail: "Tap the button below. Then go to General, Keyboard, Keyboards.")
-                    SetupStep(number: 2, title: "Add Alexx: Snippet Keyboard", detail: "Tap Add New Keyboard, then Alexx: Snippet Keyboard.")
-                    SetupStep(number: 3, title: "Share your snippets", detail: "Tap Alexx: Snippet Keyboard in the keyboard list and turn on Allow Full Access. Built-in examples work without it. Alexx: Snippet Keyboard does not transmit what you type.")
-                    SetupStep(number: 4, title: "Start typing", detail: "In a text field, tap the globe key and choose Alexx: Snippet Keyboard.")
+                    SetupStep(number: 2, title: "Add Alexx", detail: "Tap Add New Keyboard, then Alexx.")
+                    SetupStep(number: 3, title: "Share your snippets", detail: "Tap Alexx in the keyboard list and turn on Allow Full Access. Built-in examples work without it. Alexx does not transmit what you type.")
+                    SetupStep(number: 4, title: "Start typing", detail: "In a text field, tap the globe key and choose Alexx.")
                 } header: {
                     Text("Four quick steps")
                 }
@@ -854,7 +938,7 @@ private struct SetupView: View {
                     ShareLink(
                         item: store.makeArchive(),
                         preview: SharePreview(
-                            "Alexx: Snippet Keyboard backup",
+                            "Alexx backup",
                             image: Image(systemName: "doc.text")
                         )
                     ) {
@@ -870,6 +954,10 @@ private struct SetupView: View {
                         }
                     }
 
+                    Button("Reset", systemImage: "arrow.counterclockwise", role: .destructive) {
+                        showsResetSheet = true
+                    }
+
                     LabeledContent("Last backup") {
                         if let lastBackupDate = store.lastBackupDate {
                             Text(
@@ -883,6 +971,22 @@ private struct SetupView: View {
                             )
                         } else {
                             Text("Never")
+                        }
+                    }
+
+                    if store.lastBackupDate != nil {
+                        Button("Restore Backup", systemImage: "arrow.down.circle") {
+                            confirmsRestore = true
+                        }
+                        .confirmationDialog("Restore your last backup?", isPresented: $confirmsRestore, titleVisibility: .visible) {
+                            Button("Restore Backup", role: .destructive) {
+                                backupMessage = store.restoreBackup()
+                                    ? "Snippets and categories restored."
+                                    : "The saved backup could not be read."
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        } message: {
+                            Text("This replaces your current snippets and categories. Changes made since the backup will be lost.")
                         }
                     }
                 }
@@ -910,8 +1014,10 @@ private struct SetupView: View {
                     NavigationLink("License") {
                         MITLicenseView()
                     }
+                    Toggle("Clear Background", isOn: $clearsBackground)
                 }
             }
+            .illustratedBackground()
             .scrollDismissesKeyboard(.immediately)
             .navigationTitle("Keyboard Setup")
             .toolbar {
@@ -929,6 +1035,34 @@ private struct SetupView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(backupMessage ?? "")
+            }
+            .sheet(isPresented: $showsResetSheet) {
+                NavigationStack {
+                    Form {
+                        Text("Reset replaces your current snippets and categories with the default samples. Your saved backup is kept.")
+                        Button("Continue", role: .destructive) {
+                            confirmsReset = true
+                        }
+                    }
+                    .illustratedBackground()
+                    .navigationTitle("Reset snippets?")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { showsResetSheet = false }
+                        }
+                    }
+                    .alert("Restore default samples?", isPresented: $confirmsReset) {
+                        Button("Cancel", role: .cancel) {}
+                        Button("Reset Snippets", role: .destructive) {
+                            store.resetToSamples()
+                            showsResetSheet = false
+                        }
+                    } message: {
+                        Text("This replaces all snippets and categories in your current library.")
+                    }
+                }
+                .presentationDetents([.medium, .large])
             }
         }
     }
@@ -988,6 +1122,7 @@ private struct ImportSnippetsView: View {
             .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding()
+        .illustratedBackground()
         .navigationTitle("Import")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Nothing to import", isPresented: $showsInvalidFormat) {
@@ -1014,6 +1149,7 @@ private struct PrivacyPolicyView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
         }
+        .illustratedBackground()
         .navigationTitle("Privacy Policy")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1038,6 +1174,7 @@ private struct MITLicenseView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
         }
+        .illustratedBackground()
         .navigationTitle("MIT License")
         .navigationBarTitleDisplayMode(.inline)
     }

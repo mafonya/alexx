@@ -68,18 +68,21 @@ The app does not use encryption. The Info.plist flag answers the upload question
 
 ## Review notes
 
-Alexx: Snippet Keyboard includes a custom keyboard. No account is required.
+Alexx: Snippet Keyboard is a free utility for anyone who repeatedly types the same text, such as replies, addresses, and links. It lets users save and organize text snippets and insert them into other apps using a custom keyboard, reducing repetitive typing.
 
-To test: open the app, go to Setup, and follow the four steps. Settings opens from the button; from there go to General > Keyboard > Keyboards > Add New Keyboard > Alexx: Snippet Keyboard. The Try it field on the Setup tab accepts the keyboard. Without Full Access the keyboard inserts built-in examples. With Full Access it reads personal snippets from the shared App Group container. The app and keyboard do not make network requests or collect typing activity.
+No account, login, subscription, payment, or sample file is required. To test, open the app and create a snippet using the plus button. Open Setup and use Open Settings, then go to General > Keyboard > Keyboards > Add New Keyboard and add Alexx: Snippet Keyboard. To access user-created snippets from the keyboard, select it in the keyboard list and enable Allow Full Access. Return to Alexx, tap the Try it field on the Setup tab, use the globe key to select the Alexx keyboard, and tap the snippet to insert it. Built-in examples are available without Full Access. The app can also search, favorite, edit, categorize, import, export, and back up snippets.
+
+The app's core functionality uses no external services, data providers, authentication, payment processors, or AI services. Snippets are stored on the device and shared with the keyboard through an App Group. Support and source-code links open GitHub separately.
+
+The app's features and content are the same across regions. It is a general-purpose productivity utility; it does not provide regulated services or include protected third-party content requiring authorization.
+
+Physical-device recording: [Add a review-accessible link after recording and verifying the submitted build on a physical device running the latest iOS.]
 
 ## Screenshots
 
-These two files are the required sizes, with no transparency. Upload them as the first screenshot for each slot. App Store Connect scales them to the other iPhone and iPad sizes. Add setup or search shots from the Simulator if you want a longer product page. Do not upload the welcome screen by itself.
+The six local App Store screenshots are in `AppStore/Screenshots/Illustrated/`. Each device set shows Snippets in light mode, Keyboard Setup, and Snippets in dark mode, using actual simulator captures. The frames pair those screens with Foxy kitesurfing, snowboarding, and playing tennis, in that order. The iPhone images are 1320 × 2868 and the iPad images are 2064 × 2752.
 
-- [AppStore/Screenshots/iphone-snippets.png](AppStore/Screenshots/iphone-snippets.png) — 1206×2622. iPhone with Dynamic Island, medium display (required).
-- [AppStore/Screenshots/ipad-snippets.png](AppStore/Screenshots/ipad-snippets.png) — 2064×2752. iPad 13-inch (required because the app supports iPad).
-
-iPhone Duo screenshots are not required until an app is built with the iOS 27.1 SDK, which this project does not use.
+Raw simulator captures and the 19-second iPhone demo are in `AppStore/ReviewMedia/`. The demo shows launch and the Snippets library in light and dark mode. Apple requested a separate physical-device recording demonstrating the full keyboard workflow.
 
 ## Check before you submit
 
